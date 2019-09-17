@@ -96,8 +96,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Refresh"
-                android:id="@+id/btn_refresh"/>
+                android:text="Disconnect"
+                android:id="@+id/btn_disconnect"/>
 
         </LinearLayout>
 

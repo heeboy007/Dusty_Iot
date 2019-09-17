@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:title="Get Statistics from..." android:id="@+id/menu_stat"></item>
+    <item android:title="Dis/Enable Device" android:id="@+id/menu_toggle_activity"></item>
+
+</menu>

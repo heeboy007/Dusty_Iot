@@ -1,9 +1,9 @@
 #include<LiquidCrystal_I2C.h>
-#include<SimpleDHT.h>
-#include<SoftwareSerial.h>
+#include"DHT.h"
 #include<Wire.h>
+
 /*
- Standalone Sketch to use with a Arduino UNO and a
+ Standalone Sketch to use with a Arduino Nano and a
  Sharp Optical Dust Sensor GP2Y1010AU0F
 */
 
@@ -26,7 +26,7 @@ float calcVoltage = 0;
 float dustDensity = 0;
 
 LiquidCrystal_I2C lcd(0x3F, 16, 2);
-SimpleDHT11 dht11;
+DHT dht(dhtPin, DHT22);
 
 void setLed(int value){
 
@@ -58,9 +58,10 @@ void setLed(int value){
 }
 
 void setup(){
-  Serial.begin(9600);
+  Serial.begin(115200);
   lcd.begin();
   lcd.clear();
+  dht.begin();
   pinMode(motorPin, OUTPUT);
   pinMode(bluePin, OUTPUT);
   pinMode(greenPin, OUTPUT);
@@ -76,9 +77,9 @@ void setup(){
 
 void loop(){
 
-  static byte real_temperature = 0;
-  static byte real_humidity = 0;
-  int err = SimpleDHTErrSuccess;
+  static float real_temperature = 0.0f;
+  static float real_humidity = 0.0f;
+  static byte internal_clock = 0;
   
   digitalWrite(ledPower,LOW); // power on the LED
   delayMicroseconds(samplingTime);
@@ -96,37 +97,61 @@ void loop(){
   // linear eqaution taken from http://www.howmuchsnow.com/arduino/airquality/
   // Chris Nafis (c) 2012
   dustDensity = 0.17 * calcVoltage - 0.1;
+  dustDensity *= 100;
+  if(dustDensity < 0.0f){
+    dustDensity = 0.0f;
+  }
 
-  byte temperature, humidity;
-  if ((err = dht11.read(dhtPin, &temperature, &humidity, NULL)) == SimpleDHTErrSuccess)
-  {
-    real_temperature = temperature;
-    real_humidity = humidity;
+  if(!(internal_clock % 2)){
+    float temperature = dht.readTemperature(), humidity = dht.readHumidity();
+    if (!(isnan(temperature) || isnan(humidity)))
+    {
+      real_temperature = temperature;
+      real_humidity = humidity;
+    }
   }
   
-  Serial.print(dustDensity*100); // unit: ug/m3
+  Serial.print(dustDensity); // unit: ug/m3
   Serial.print(",");
-  Serial.print(temperature);
-  Serial.print(",
- 
- ?);
-  Serial.println(humidity);
-  lcd.clear();
-  lcd.print("T:");
-  lcd.print((int)real_temperature);
-  lcd.print((char)223);
-  lcd.print("C");
-  lcd.setCursor(8, 0);
-  lcd.print("RH:");
-  lcd.print((int)real_humidity);
-  lcd.print("%");
-  lcd.setCursor(0,1);
-  lcd.print("PM2.5:");
-  lcd.print(dustDensity*100);
-  lcd.setCursor(11,1);
-  lcd.print("ug/m3");
+  Serial.print(real_temperature);
+  Serial.print(",");
+  Serial.println(real_humidity);
+  
+  if(internal_clock == 0){
+    lcd.clear();
+    lcd.print("Temp:");
+    lcd.print(real_temperature);
+    lcd.print((char)223);
+    lcd.print("C");
+    lcd.setCursor(0,1);
+    lcd.print("Humi:");
+    lcd.print(real_humidity);
+    lcd.print("%");
+  }
+  else if(internal_clock == 4) {
+    lcd.clear();
+    lcd.print("PM2.5:");
+    lcd.print(dustDensity);
+    lcd.print("ug/m3");
+    lcd.setCursor(0,1);
+    lcd.print("Stat:");
+    if(dustDensity >= 75){
+      lcd.print("Terrible");
+    }
+    else if(dustDensity >= 35){
+      lcd.print("Bad");
+    }
+    else if(dustDensity >= 15){
+      lcd.print("Normal");
+    }
+    else{
+      lcd.print("Good");
+    }
+  }
+  internal_clock++;
+  if(internal_clock > 8)
+    internal_clock = 0;
+  setLed(dustDensity);
 
-  setLed(dustDensity*100);
-
-  delay(1000);
+  delay(500);
 }
